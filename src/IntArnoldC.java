@@ -74,9 +74,13 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public  ComValue visitIf(ArnoldCParser.IfContext ctx) {
-        return visitBoolExp(ctx.exp())
-                ? visitCom(ctx.com(0))
-                : visitCom(ctx.com(1));
+        if(visitBoolExp(ctx.exp())){
+            return visitCom(ctx.com(0));
+        }else if(ctx.com(1) != null){
+            return visitCom(ctx.com(1));
+        }
+
+        return ComValue.INSTANCE;
     }
 
     @Override
@@ -137,8 +141,8 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     }
 
     @Override
-    public NatValue visitNat(ArnoldCParser.NatContext ctx) {
-        return new NatValue(Integer.parseInt(ctx.NAT().getText()));
+    public Value visitInt(ArnoldCParser.IntContext ctx) {
+        return new NatValue(Integer.parseInt(ctx.INT().getText()));
     }
 
     @Override

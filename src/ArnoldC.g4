@@ -4,16 +4,16 @@ prog : (method)* main (method)* EOF ;
 
 main : BEGIN_MAIN (com)* END_MAIN;
 
-com : IF exp com ELSE com END_IF            # if
+com : IF exp com (ELSE com)? END_IF         # if
     | A_INIT ID DECLARE exp                 # declare
     | TAKE ID SET exp END_SET               # init
     | WHILE exp (com)* END_WHILE            # while
     | SOUT (ID | STRING)                    # sout
     | CALL ID (exp)*                        # callMethod
-    | ASSIGN_CALL ID CALL (exp)*            # assignVarFromMethod
+    | ASSIGN_CALL ID CALL ID (exp)*         # assignVarFromMethod
     ;
 
-exp : NAT                                 # nat
+exp : INT                                 # int
     | BOOL                                # bool
     | exp op=(DIV | MUL | MOD) exp        # divMulMod
     | exp op=(PLUS | MINUS) exp           # plusMinus
@@ -31,8 +31,10 @@ method_type : NON_VOID (com)* RETURN (exp) END_METHOD  # nonVoid
             | (com)* END_METHOD                        # void
             ;
 
+INT : NAT | '-' POS ;
+fragment NAT : '0' | POS ;
+fragment POS : [1-9][0-9]* ;
 
-NAT : '0' | [1-9][0-9]* ;
 BOOL : 'NO PROBLEMO' | 'I LIED' ;
 
 STRING : '"' STRCHR* '"' ;
