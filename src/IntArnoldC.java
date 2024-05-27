@@ -54,13 +54,10 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     @Override
     public NatValue visitProg(ArnoldCParser.ProgContext ctx) {
 
-        if(ctx.method(0) != null){
-            visitMethod(ctx.method(0));
+        for(int i = 0; i < ctx.method().size(); i++){
+            visitMethod(ctx.method(i));
         }
 
-        if(ctx.method(1) != null){
-            visitMethod(ctx.method(1));
-        }
         return visitMain(ctx.main());
     }
 
@@ -115,8 +112,11 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public ComValue visitWhile(ArnoldCParser.WhileContext ctx) {
-        while (visitBoolExp(ctx.exp())) {
-            visitCom(ctx.com());
+
+        while (visitNatExp(ctx.exp()) > 0) {
+            for(int i = 0; i < ctx.com().size(); i++){
+                visitCom(ctx.com(i));
+            }
         }
         return ComValue.INSTANCE;
 
@@ -220,7 +220,6 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public ComValue visitMethod(ArnoldCParser.MethodContext ctx) {
-        System.out.println("hi");
         ParseTree tree = ctx;
         conf.updateTree(ctx.ID(0).getText(),tree);
         return ComValue.INSTANCE;
@@ -229,7 +228,6 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     @Override
     public ComValue visitCallMethod(ArnoldCParser.CallMethodContext ctx) {
         ParseTree tree = conf.getTree(ctx.ID().getText());
-        System.out.println("vado");
         visit(tree.getChild(2));
         return ComValue.INSTANCE;
     }

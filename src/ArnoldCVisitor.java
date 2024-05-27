@@ -1,4 +1,4 @@
-// Generated from /home/emmekappa/Desktop/Linguaggi/Elaborato/ArnoldC/src/ArnoldC.g4 by ANTLR 4.13.1
+// Generated from C:/Users/miche/Desktop/LAB_LING/ArnoldC/src/ArnoldC.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**

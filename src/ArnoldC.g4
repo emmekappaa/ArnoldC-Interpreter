@@ -7,7 +7,7 @@ main : BEGIN_MAIN (com)* END_MAIN;
 com : IF exp com ELSE com END_IF            # if
     | A_INIT ID DECLARE exp                 # declare
     | TAKE ID SET exp END_SET               # init
-    | WHILE exp com END_WHILE               # while
+    | WHILE exp (com)* END_WHILE            # while
     | SOUT (ID | STRING)                    # sout
     | CALL ID (exp)*                        # callMethod
     | ASSIGN_CALL ID CALL (exp)*            # assignVarFromMethod
