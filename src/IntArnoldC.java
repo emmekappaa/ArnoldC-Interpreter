@@ -147,7 +147,14 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public BoolValue visitBool(ArnoldCParser.BoolContext ctx) {
-        return new BoolValue(Boolean.parseBoolean(ctx.BOOL().getText()));
+        String tmp = "";
+        if(ctx.BOOL().getText().equals("NO PROBLEMO")){
+            tmp = "true";
+        }
+        else if (ctx.BOOL().getText().equals("I LIED")){
+            tmp = "false";
+        }
+        return new BoolValue(Boolean.parseBoolean(tmp));
     }
 
     @Override
