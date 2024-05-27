@@ -1,4 +1,7 @@
+import org.antlr.v4.runtime.tree.ParseTree;
 import value.*;
+
+import java.io.InputStream;
 
 public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
@@ -51,11 +54,11 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     @Override
     public NatValue visitProg(ArnoldCParser.ProgContext ctx) {
 
-        if(!ctx.method(0).isEmpty()){
+        if(ctx.method(0) != null){
             visitMethod(ctx.method(0));
         }
 
-        if(!ctx.method(1).isEmpty()){
+        if(ctx.method(1) != null){
             visitMethod(ctx.method(1));
         }
         return visitMain(ctx.main());
@@ -70,6 +73,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
         }
         return new NatValue(0);
     }
+
 
     @Override
     public  ComValue visitIf(ArnoldCParser.IfContext ctx) {
@@ -122,10 +126,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     public ComValue visitSout(ArnoldCParser.SoutContext ctx) {
 
         String text = "";
-        if(!ctx.exp().isEmpty()){
-            text = visitExp(ctx.exp()).toJavaValue().toString();
-        }
-        else if(ctx.ID() != null){
+        if(ctx.ID() != null){
             text = (conf.get(ctx.ID().getText())).toJavaValue().toString();
         }
         else{
@@ -135,6 +136,102 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
         return ComValue.INSTANCE;
     }
 
+    @Override
+    public NatValue visitNat(ArnoldCParser.NatContext ctx) {
+        return new NatValue(Integer.parseInt(ctx.NAT().getText()));
+    }
 
+    @Override
+    public BoolValue visitBool(ArnoldCParser.BoolContext ctx) {
+        return new BoolValue(Boolean.parseBoolean(ctx.BOOL().getText()));
+    }
+
+    @Override
+    public NatValue visitDivMulMod(ArnoldCParser.DivMulModContext ctx) {
+        int left = visitNatExp(ctx.exp(0));
+        int right = visitNatExp(ctx.exp(1));
+
+        return switch (ctx.op.getType()) {
+            case ArnoldCParser.DIV -> new NatValue(left / right);
+            case ArnoldCParser.MUL -> new NatValue(left * right);
+            case ArnoldCParser.MOD -> new NatValue(left % right);
+            default -> null;
+        };
+    }
+
+    @Override
+    public NatValue visitPlusMinus(ArnoldCParser.PlusMinusContext ctx) {
+        int left = visitNatExp(ctx.exp(0));
+        int right = visitNatExp(ctx.exp(1));
+
+        return switch (ctx.op.getType()) {
+            case ArnoldCParser.PLUS -> new NatValue(left + right);
+            case ArnoldCParser.MINUS -> new NatValue(Math.max(left - right, 0));
+            default -> null;
+        };
+    }
+
+    @Override
+    public BoolValue visitCmpExp(ArnoldCParser.CmpExpContext ctx) {
+        int left = visitNatExp(ctx.exp(0));
+        int right = visitNatExp(ctx.exp(1));
+        return new BoolValue(left > right);
+    }
+
+    @Override
+    public BoolValue visitEqExp(ArnoldCParser.EqExpContext ctx) {
+        ExpValue<?> left = visitExp(ctx.exp(0));
+        ExpValue<?> right = visitExp(ctx.exp(1));
+        return new BoolValue(left.equals(right));
+    }
+
+    @Override
+    public BoolValue visitLogicExp(ArnoldCParser.LogicExpContext ctx) {
+        boolean left = visitBoolExp(ctx.exp(0));
+        boolean right = visitBoolExp(ctx.exp(1));
+
+        return switch (ctx.op.getType()) {
+            case ArnoldCParser.AND -> new BoolValue(left && right);
+            case ArnoldCParser.OR -> new BoolValue(left || right);
+            default -> null;
+        };
+    }
+
+    @Override
+    public Value visitId(ArnoldCParser.IdContext ctx) {
+
+        if(conf.contains(ctx.ID().getText())){
+            return conf.get(ctx.ID().getText());
+        }
+        else{
+            return new NatValue(0);
+        }
+    }
+
+    @Override
+    public Value visitZero(ArnoldCParser.ZeroContext ctx) {
+        return new NatValue(0);
+    }
+
+    @Override
+    public Value visitOne(ArnoldCParser.OneContext ctx) {
+        return new NatValue(1);
+    }
+
+    @Override
+    public ComValue visitMethod(ArnoldCParser.MethodContext ctx) {
+        System.out.println("hi");
+        ParseTree tree = ctx;
+        conf.updateTree(ctx.ID(0).getText(),tree);
+        return ComValue.INSTANCE;
+    }
+
+    @Override
+    public ComValue visitCallMethod(ArnoldCParser.CallMethodContext ctx) {
+        ParseTree tree = conf.getTree(ctx.ID().getText());
+        System.out.println("vado");
+        visit(tree.getChild(2));
+        return ComValue.INSTANCE;
+    }
 }
 

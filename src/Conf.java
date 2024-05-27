@@ -1,12 +1,12 @@
+import org.antlr.v4.runtime.tree.ParseTree;
 import value.ExpValue;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Conf {
 
     private final Map<String, ExpValue<?>> map = new HashMap<>();
-
+    private final Map<String, ParseTree> mapTree = new HashMap<>();
 
     public boolean contains(String id) {
         return map.containsKey(id);
@@ -18,6 +18,18 @@ public class Conf {
 
     public void update(String id, ExpValue<?> v) {
         map.put(id, v);
+    }
+
+    public boolean containsTree(String id) {
+        return mapTree.containsKey(id);
+    }
+
+    public ParseTree getTree(String id) {
+        return mapTree.get(id);
+    }
+
+    public void updateTree(String id, ParseTree v) {
+        mapTree.put(id, v);
     }
 
 }
