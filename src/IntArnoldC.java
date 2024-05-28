@@ -1,10 +1,15 @@
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 import value.*;
 
 import java.io.InputStream;
+import java.util.*;
 
 public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
+    String current_method = "";
+    String current_method_stack = "main";
+    Boolean in_main = true;
     private final Conf conf;
 
     public IntArnoldC(Conf conf) {
@@ -73,27 +78,56 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
 
     @Override
-    public  ComValue visitIf(ArnoldCParser.IfContext ctx) {
-        if(visitBoolExp(ctx.exp())){
-            return visitCom(ctx.com(0));
-        }else if(ctx.com(1) != null){
-            return visitCom(ctx.com(1));
+    public ComValue visitIf(ArnoldCParser.IfContext ctx) {
+        System.out.println("hi");
+        if(visitNatExp(ctx.exp()) > 0){
+
+            for(int i = 0; i < ctx.com().size(); i++){
+                visitCom(ctx.com(i));
+            }
+        }
+        else if(ctx.com2(1) != null)
+        {
+            for(int i = 0; i < ctx.com2().size(); i++){
+                visit(ctx.com2(i));
+            }
         }
 
         return ComValue.INSTANCE;
     }
 
+
     @Override
     public ComValue visitDeclare(ArnoldCParser.DeclareContext ctx) {
         String id = ctx.ID().getText();
         ExpValue<?> v = visitExp(ctx.exp());
-
-        if(conf.contains(id)){
-            System.err.println("Variable already declared");
-            System.exit(1);
+        if(in_main)
+        {
+            if(conf.contains(id)){
+                System.err.println("Variable already declared");
+                System.exit(1);
+            }
+            conf.update(id,v);
         }
-        conf.update(id,v);
+        else
+        {
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(current_method);
+            if(Temp_map != null){
+                if(Temp_map.containsKey(id)){
+                    System.err.println("Variable already declared");
+                    System.exit(1);
+                }
+                else{
+                    Temp_map.put(id,v);
+                }
+            }
+            else{
+                Temp_map = new HashMap<>();
+                Temp_map.put(id,v);
+            }
 
+            conf.updateMVar(current_method,Temp_map);
+        }
         return ComValue.INSTANCE;
     }
 
@@ -102,13 +136,27 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
         String id = ctx.ID().getText();
         ExpValue<?> v = visitExp(ctx.exp());
+        if(in_main)
+        {
+            if(!conf.contains(id)){
+                System.err.println("You must declare the variable in order to do an assignment");
+                System.exit(1);
+            }
 
-        if(!conf.contains(id)){
-            System.err.println("You must declare the variable in order to do an assignment");
-            System.exit(1);
+            conf.update(id,v);
         }
-
-        conf.update(id,v);
+        else
+        {
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(current_method);
+            if(!Temp_map.containsKey(id)){
+                System.err.println("You must declare the variable in order to do an assignment");
+                System.exit(1);
+            }
+            else{
+                Temp_map.put(id,v);
+            }
+            conf.updateMVar(current_method,Temp_map);
+        }
 
         return ComValue.INSTANCE;
 
@@ -130,13 +178,26 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     public ComValue visitSout(ArnoldCParser.SoutContext ctx) {
 
         String text = "";
-        if(ctx.ID() != null){
-            text = (conf.get(ctx.ID().getText())).toJavaValue().toString();
+        if(in_main){
+            if(ctx.ID() != null){
+                text = (conf.get(ctx.ID().getText())).toJavaValue().toString();
+            }
+            else{
+                text = ctx.STRING().getText();
+            }
+            System.out.println(text);
         }
         else{
-            text = ctx.STRING().getText();
+            if(ctx.ID() != null){
+                Map<String, ExpValue<?>> Temp_map = conf.getMVar(current_method);
+                text = Temp_map.get(ctx.ID().getText()).toJavaValue().toString();
+            }
+            else{
+                text = ctx.STRING().getText();
+            }
+            System.out.println(text);
         }
-        System.out.println(text);
+
         return ComValue.INSTANCE;
     }
 
@@ -183,39 +244,68 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     }
 
     @Override
-    public BoolValue visitCmpExp(ArnoldCParser.CmpExpContext ctx) {
+    public NatValue visitCmpExp(ArnoldCParser.CmpExpContext ctx) {
         int left = visitNatExp(ctx.exp(0));
         int right = visitNatExp(ctx.exp(1));
-        return new BoolValue(left > right);
+        if(left > right){
+            return new NatValue(1);
+        }
+        else{
+            return new NatValue(0);
+        }
     }
 
     @Override
-    public BoolValue visitEqExp(ArnoldCParser.EqExpContext ctx) {
+    public NatValue visitEqExp(ArnoldCParser.EqExpContext ctx) {
         ExpValue<?> left = visitExp(ctx.exp(0));
         ExpValue<?> right = visitExp(ctx.exp(1));
-        return new BoolValue(left.equals(right));
+        if(left.equals(right)){
+            return new NatValue(1);
+        }
+        return new NatValue(0);
     }
 
     @Override
-    public BoolValue visitLogicExp(ArnoldCParser.LogicExpContext ctx) {
+    public NatValue visitLogicExp(ArnoldCParser.LogicExpContext ctx) {
         boolean left = visitBoolExp(ctx.exp(0));
         boolean right = visitBoolExp(ctx.exp(1));
 
-        return switch (ctx.op.getType()) {
-            case ArnoldCParser.AND -> new BoolValue(left && right);
-            case ArnoldCParser.OR -> new BoolValue(left || right);
-            default -> null;
-        };
+        if(ctx.op.getType() == ArnoldCParser.AND)
+        {
+            if(left && right){
+                return new NatValue(1);
+            }
+            return new NatValue(0);
+        }
+        else if(ctx.op.getType() == ArnoldCParser.OR)
+        {
+            if(left || right){
+                return new NatValue(1);
+            }
+            return new NatValue(0);
+        }
+        return new NatValue(0);
     }
 
     @Override
     public Value visitId(ArnoldCParser.IdContext ctx) {
-
-        if(conf.contains(ctx.ID().getText())){
-            return conf.get(ctx.ID().getText());
+        if(in_main){
+            if(conf.contains(ctx.ID().getText())){
+                return conf.get(ctx.ID().getText());
+            }
+            else{
+                return new NatValue(0);
+            }
         }
-        else{
-            return new NatValue(0);
+        else
+        {
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(current_method);
+            if(Temp_map.containsKey(ctx.ID().getText())){
+                return Temp_map.get(ctx.ID().getText());
+            }
+            else{
+                return new NatValue(0);
+            }
         }
     }
 
@@ -232,15 +322,186 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     @Override
     public ComValue visitMethod(ArnoldCParser.MethodContext ctx) {
         ParseTree tree = ctx;
+        Map<String, ExpValue<?>> Temp_map = new HashMap<>();
+        if(ctx.GET_ARG() != null){
+            // metodi con mappa di parametri vuoti ora
+            for(int i=1; i<ctx.ID().size(); i++)
+            {
+                Temp_map.put(i-1+"-"+ctx.ID(i).getText(),null);
+            }
+        }
+        if(ctx.RETURN() != null){
+            Temp_map.put("Return"+ctx.id2().getText(),null);
+        }
+        conf.updateMVar(ctx.ID(0).getText(),Temp_map);
+
         conf.updateTree(ctx.ID(0).getText(),tree);
         return ComValue.INSTANCE;
     }
 
     @Override
     public ComValue visitCallMethod(ArnoldCParser.CallMethodContext ctx) {
+
+        if(!conf.containsTree(ctx.ID().getText())){
+            System.err.println("Error, no method " + ctx.ID().getText() + " found");
+            System.exit(1);
+
+        }
+
         ParseTree tree = conf.getTree(ctx.ID().getText());
-        visit(tree.getChild(2));
+
+        if(tree.getText().contains("BOOTS")){
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(ctx.ID().getText());
+            Set<String> cpy = new HashSet<>(Temp_map.keySet());
+            for(Integer i=0; i< ctx.exp().size(); i++){
+
+                for(String s: cpy)
+                {
+                    if(s.contains(i.toString())){
+                        Temp_map.remove(s);
+                        Temp_map.put(s.replaceAll("\\d", ""), (ExpValue<?>) visit(ctx.exp(i)));
+                    }
+                }
+                //Temp_map.put(ctx.exp(i).getText(),conf.get((ctx.exp(i).getText())));
+            }
+            //conf.updateMVar(ctx.ID().getText(),Temp_map);
+            /*
+            if(in_main)
+            {
+                for(String s: Temp_map.keySet()){
+                    if(!s.contains("Return"))
+                        Temp_map.put(s,conf.get(s));
+                }
+            }
+            else
+            {
+                Map<String, ExpValue<?>> Temp_map2 = conf.getMVar(current_method);
+                for(String s: Temp_map.keySet()){
+                    if(!s.contains("Return"))
+                        Temp_map.put(s, Temp_map2.get(s));
+                }
+            }
+            */
+
+            conf.updateMVar(ctx.ID().getText(),Temp_map);
+        }
+        in_main = false;
+        current_method = ctx.ID().getText();
+        current_method_stack += "_-_" + ctx.ID().getText();
+        for(int i=0; i< tree.getChildCount();i++){
+            if(!(tree.getChild(i) instanceof TerminalNodeImpl)){
+                visit(tree.getChild(i));
+            }
+        }
+        //conf.updateMVar(current_method,null);
+        current_method = precCurrentMethod(ctx.ID().getText());
+        current_method_stack = updateCurrentMethod(ctx.ID().getText());
+        if(current_method_stack.equals("main")){
+            in_main = true;
+        }
         return ComValue.INSTANCE;
     }
-}
+    public String precCurrentMethod(String ctx)
+    {
+        // Dividi la stringa principale in segmenti
+        String[] segments = current_method_stack.split("_-_");
 
+        // Cerca l'indice del segmento target
+        for (int i = 1; i < segments.length; i++) {
+            if (segments[i].equals(ctx)) {
+                // Se il target viene trovato, ritorna il segmento precedente
+                return segments[i - 1];
+            }
+        }
+        return "";
+    }
+    public String updateCurrentMethod(String ctx){
+        int lastIndex = current_method_stack.lastIndexOf("_-_"+ctx);
+        String result = "";
+        if (lastIndex != -1) {
+            result = current_method_stack.substring(0, lastIndex) + current_method_stack.substring(lastIndex + ctx.length()+"_-_".length());
+        } else {
+            System.err.println("Stack Error");
+            System.exit(1);
+        }
+        return result;
+    }
+    @Override
+    public ComValue visitAssignVarFromMethod(ArnoldCParser.AssignVarFromMethodContext ctx) {
+
+
+        ParseTree tree = conf.getTree(ctx.ID(1).getText());
+
+        if(tree.getText().contains("BOOTS")) {
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(ctx.ID(1).getText());
+            Set<String> cpy = new HashSet<>(Temp_map.keySet());
+            for (Integer i = 0; i < ctx.exp().size(); i++) {
+
+                for (String s : cpy) {
+                    if (s.contains(i.toString())) {
+                        Temp_map.remove(s);
+                        Temp_map.put(s.replaceAll("[\\d-]", ""), (ExpValue<?>) visit(ctx.exp(i)));
+                    }
+                }
+
+            }
+            conf.updateMVar(ctx.ID(1).getText(),Temp_map);
+        }
+
+        if(in_main)
+        {
+            if(conf.get(ctx.ID(0).getText()) != null){
+                conf.update(ctx.ID(0).getText(), returnMethodResults(ctx.ID(1).getText()));
+            }
+            else{
+                System.err.println("You must declare the variable in order to do an assignment");
+                System.exit(1);
+            }
+        }
+        else
+        {
+            Map<String, ExpValue<?>> Temp_map = conf.getMVar(current_method);
+            if(Temp_map.get(ctx.ID(0).getText()) != null){
+                Temp_map.put(ctx.ID(0).getText(),returnMethodResults(ctx.ID(1).getText()));
+                conf.updateMVar(ctx.ID(1).getText(),Temp_map);
+            }
+            else{
+                System.err.println("You must declare the variable in order to do an assignment");
+                System.exit(1);
+            }
+        }
+
+        return ComValue.INSTANCE;
+    }
+
+
+    public ExpValue<?> returnMethodResults(String tree){
+
+        // valore da prendere come return
+        //ParseTree t = conf.getTree(tree).getChild(2);
+        String returntmp = "";
+        Map<String, ExpValue<?>> Temp_map = conf.getMVar(tree);
+        for(String s : Temp_map.keySet()){
+            if (s.startsWith("Return")) {
+                returntmp = s.substring("Return".length());
+            }
+        }
+        in_main = false;
+        current_method = tree;
+        current_method_stack += "_-_" + tree;
+        for(int i=0; i< conf.getTree(tree).getChildCount();i++){
+            if(!(conf.getTree(tree).getChild(i) instanceof TerminalNodeImpl)){
+                visit(conf.getTree(tree).getChild(i));
+            }
+        }
+        current_method = precCurrentMethod(tree);
+        current_method_stack = updateCurrentMethod(tree);
+        if(current_method_stack.equals("main")){
+            in_main = true;
+        }
+        Map<String, ExpValue<?>> Temp_map2 = conf.getMVar(tree);
+        return Temp_map2.get(returntmp);
+
+    }
+
+}

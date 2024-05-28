@@ -6,7 +6,10 @@ import java.util.Map;
 public class Conf {
 
     private final Map<String, ExpValue<?>> map = new HashMap<>();
+
     private final Map<String, ParseTree> mapTree = new HashMap<>();
+
+    private final Map<String, Map<String, ExpValue<?>>> mapMethodVar = new HashMap<>();
 
     public boolean contains(String id) {
         return map.containsKey(id);
@@ -20,6 +23,7 @@ public class Conf {
         map.put(id, v);
     }
 
+
     public boolean containsTree(String id) {
         return mapTree.containsKey(id);
     }
@@ -31,5 +35,20 @@ public class Conf {
     public void updateTree(String id, ParseTree v) {
         mapTree.put(id, v);
     }
+
+    public boolean containsMVar(String id) {
+        return mapMethodVar.containsKey(id);
+    }
+
+    public Map<String, ExpValue<?>> getMVar(String id) {
+        return mapMethodVar.get(id);
+    }
+
+    public void updateMVar(String id, Map<String, ExpValue<?>> v) {
+        mapMethodVar.put(id, v);
+    }
+
+
+
 
 }

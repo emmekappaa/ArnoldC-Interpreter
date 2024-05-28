@@ -71,6 +71,12 @@ public interface ArnoldCVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitAssignVarFromMethod(ArnoldCParser.AssignVarFromMethodContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link ArnoldCParser#com2}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCom2(ArnoldCParser.Com2Context ctx);
+	/**
 	 * Visit a parse tree produced by the {@code zero}
 	 * labeled alternative in {@link ArnoldCParser#exp}.
 	 * @param ctx the parse tree
@@ -147,17 +153,9 @@ public interface ArnoldCVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitMethod(ArnoldCParser.MethodContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code nonVoid}
-	 * labeled alternative in {@link ArnoldCParser#method_type}.
+	 * Visit a parse tree produced by {@link ArnoldCParser#id2}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitNonVoid(ArnoldCParser.NonVoidContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code void}
-	 * labeled alternative in {@link ArnoldCParser#method_type}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitVoid(ArnoldCParser.VoidContext ctx);
+	T visitId2(ArnoldCParser.Id2Context ctx);
 }

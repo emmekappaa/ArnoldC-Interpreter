@@ -4,7 +4,7 @@ prog : (method)* main (method)* EOF ;
 
 main : BEGIN_MAIN (com)* END_MAIN;
 
-com : IF exp com (ELSE com)? END_IF         # if
+com : IF exp (com)* (ELSE (com2)*)? END_IF  # if
     | A_INIT ID DECLARE exp                 # declare
     | TAKE ID SET exp END_SET               # init
     | WHILE exp (com)* END_WHILE            # while
@@ -12,6 +12,8 @@ com : IF exp com (ELSE com)? END_IF         # if
     | CALL ID (exp)*                        # callMethod
     | ASSIGN_CALL ID CALL ID (exp)*         # assignVarFromMethod
     ;
+
+com2 : com;
 
 exp : INT                                 # int
     | BOOL                                # bool
@@ -25,11 +27,9 @@ exp : INT                                 # int
     | ONE                                 # one
     ;
 
-method : DEFINE_METHOD ID (GET_ARG ID)* method_type;
+method : DEFINE_METHOD ID (GET_ARG ID)* (NON_VOID)? (com)* (RETURN (id2))? END_METHOD;
 
-method_type : NON_VOID (com)* RETURN (exp) END_METHOD  # nonVoid
-            | (com)* END_METHOD                        # void
-            ;
+id2 : ID;
 
 INT : NAT | '-' POS ;
 fragment NAT : '0' | POS ;
