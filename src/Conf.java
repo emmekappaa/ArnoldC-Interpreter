@@ -11,6 +11,8 @@ public class Conf {
 
     private final Map<String, Map<String, ExpValue<?>>> mapMethodVar = new HashMap<>();
 
+    private final Map<String, Map<String, ExpValue<?>>> mapMethodVar_copy = new HashMap<>();
+
     public boolean contains(String id) {
         return map.containsKey(id);
     }
@@ -48,7 +50,13 @@ public class Conf {
         mapMethodVar.put(id, v);
     }
 
+    public Map<String, ExpValue<?>> getMVarCopy(String id) {
+        return mapMethodVar_copy.get(id);
+    }
 
+    public void updateMVarcopy(String id, Map<String, ExpValue<?>> v) {
+        mapMethodVar_copy.put(id, v);
+    }
 
 
 }

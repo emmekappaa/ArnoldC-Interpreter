@@ -79,14 +79,14 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public ComValue visitIf(ArnoldCParser.IfContext ctx) {
-        System.out.println("hi");
+
         if(visitNatExp(ctx.exp()) > 0){
 
             for(int i = 0; i < ctx.com().size(); i++){
                 visitCom(ctx.com(i));
             }
         }
-        else if(ctx.com2(1) != null)
+        else if(ctx.com2(0) != null)
         {
             for(int i = 0; i < ctx.com2().size(); i++){
                 visit(ctx.com2(i));
@@ -177,7 +177,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     @Override
     public ComValue visitSout(ArnoldCParser.SoutContext ctx) {
 
-        String text = "";
+       String text = "";
         if(in_main){
             if(ctx.ID() != null){
                 text = (conf.get(ctx.ID().getText())).toJavaValue().toString();
@@ -185,7 +185,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
             else{
                 text = ctx.STRING().getText();
             }
-            System.out.println(text);
+            System.out.println(text.replace("\"", ""));
         }
         else{
             if(ctx.ID() != null){
@@ -195,7 +195,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
             else{
                 text = ctx.STRING().getText();
             }
-            System.out.println(text);
+            System.out.println(text.replace("\"", ""));
         }
 
         return ComValue.INSTANCE;
@@ -323,6 +323,8 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
     public ComValue visitMethod(ArnoldCParser.MethodContext ctx) {
         ParseTree tree = ctx;
         Map<String, ExpValue<?>> Temp_map = new HashMap<>();
+        Map<String, ExpValue<?>> Temp_map_copy = new HashMap<>();
+
         if(ctx.GET_ARG() != null){
             // metodi con mappa di parametri vuoti ora
             for(int i=1; i<ctx.ID().size(); i++)
@@ -333,8 +335,13 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
         if(ctx.RETURN() != null){
             Temp_map.put("Return"+ctx.id2().getText(),null);
         }
-        conf.updateMVar(ctx.ID(0).getText(),Temp_map);
 
+        for (Map.Entry<String, ExpValue<?>> entry : Temp_map.entrySet()) {
+            Temp_map_copy.put(entry.getKey(), null);
+        }
+
+        conf.updateMVarcopy(ctx.ID(0).getText(),Temp_map_copy);
+        conf.updateMVar(ctx.ID(0).getText(),Temp_map);
         conf.updateTree(ctx.ID(0).getText(),tree);
         return ComValue.INSTANCE;
     }
@@ -364,24 +371,6 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
                 }
                 //Temp_map.put(ctx.exp(i).getText(),conf.get((ctx.exp(i).getText())));
             }
-            //conf.updateMVar(ctx.ID().getText(),Temp_map);
-            /*
-            if(in_main)
-            {
-                for(String s: Temp_map.keySet()){
-                    if(!s.contains("Return"))
-                        Temp_map.put(s,conf.get(s));
-                }
-            }
-            else
-            {
-                Map<String, ExpValue<?>> Temp_map2 = conf.getMVar(current_method);
-                for(String s: Temp_map.keySet()){
-                    if(!s.contains("Return"))
-                        Temp_map.put(s, Temp_map2.get(s));
-                }
-            }
-            */
 
             conf.updateMVar(ctx.ID().getText(),Temp_map);
         }
@@ -393,6 +382,7 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
                 visit(tree.getChild(i));
             }
         }
+        dealloc_map();
         //conf.updateMVar(current_method,null);
         current_method = precCurrentMethod(ctx.ID().getText());
         current_method_stack = updateCurrentMethod(ctx.ID().getText());
@@ -401,6 +391,21 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
         }
         return ComValue.INSTANCE;
     }
+
+    public void dealloc_map(){
+        Map<String, ExpValue<?>> Temp_map_copy = new HashMap<>();
+        Map<String, ExpValue<?>> Temp_map = conf.getMVarCopy(current_method);
+        if(Temp_map != null){
+            for (Map.Entry<String, ExpValue<?>> entry : Temp_map.entrySet()) {
+                Temp_map_copy.put(entry.getKey(), null);
+            }
+            conf.updateMVar(current_method,Temp_map_copy);
+        }
+
+    }
+
+
+
     public String precCurrentMethod(String ctx)
     {
         // Dividi la stringa principale in segmenti
@@ -452,6 +457,12 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
         {
             if(conf.get(ctx.ID(0).getText()) != null){
                 conf.update(ctx.ID(0).getText(), returnMethodResults(ctx.ID(1).getText()));
+                dealloc_map();
+                current_method = precCurrentMethod(ctx.ID(1).getText());
+                current_method_stack = updateCurrentMethod(ctx.ID(1).getText());
+                if(current_method_stack.equals("main")){
+                    in_main = true;
+                }
             }
             else{
                 System.err.println("You must declare the variable in order to do an assignment");
@@ -464,6 +475,12 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
             if(Temp_map.get(ctx.ID(0).getText()) != null){
                 Temp_map.put(ctx.ID(0).getText(),returnMethodResults(ctx.ID(1).getText()));
                 conf.updateMVar(ctx.ID(1).getText(),Temp_map);
+                dealloc_map();
+                current_method = precCurrentMethod(ctx.ID(1).getText());
+                current_method_stack = updateCurrentMethod(ctx.ID(1).getText());
+                if(current_method_stack.equals("main")){
+                    in_main = true;
+                }
             }
             else{
                 System.err.println("You must declare the variable in order to do an assignment");
@@ -493,11 +510,6 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
             if(!(conf.getTree(tree).getChild(i) instanceof TerminalNodeImpl)){
                 visit(conf.getTree(tree).getChild(i));
             }
-        }
-        current_method = precCurrentMethod(tree);
-        current_method_stack = updateCurrentMethod(tree);
-        if(current_method_stack.equals("main")){
-            in_main = true;
         }
         Map<String, ExpValue<?>> Temp_map2 = conf.getMVar(tree);
         return Temp_map2.get(returntmp);
