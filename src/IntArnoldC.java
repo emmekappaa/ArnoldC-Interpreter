@@ -267,19 +267,19 @@ public class IntArnoldC extends  ArnoldCBaseVisitor<Value>{
 
     @Override
     public NatValue visitLogicExp(ArnoldCParser.LogicExpContext ctx) {
-        boolean left = visitBoolExp(ctx.exp(0));
-        boolean right = visitBoolExp(ctx.exp(1));
+        int left = visitNatExp(ctx.exp(0));
+        int right = visitNatExp(ctx.exp(1));
 
         if(ctx.op.getType() == ArnoldCParser.AND)
         {
-            if(left && right){
+            if(left == 1 && right == 1){
                 return new NatValue(1);
             }
             return new NatValue(0);
         }
         else if(ctx.op.getType() == ArnoldCParser.OR)
         {
-            if(left || right){
+            if(left == 1 || right == 1){
                 return new NatValue(1);
             }
             return new NatValue(0);
